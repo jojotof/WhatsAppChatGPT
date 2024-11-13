@@ -92,7 +92,7 @@ console.log('Client initialized and listening for messages');
             msg.reply("[Jojo-GPT]: " + res.text);
           }
           else {
-            chat.sendMessage(res.text);
+            chat.sendMessage("[Jojo-GPT]: " + res.text);
             return;
           }
           
