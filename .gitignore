@@ -1,0 +1,4 @@
+.wwebjs_cache/
+authFolder/
+node_modules/
+package-lock.json

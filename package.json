@@ -7,7 +7,7 @@
   "author": "prashant1879",
   "license": "MIT",
   "type": "module",
-  "keywords": [ 
+  "keywords": [
     "api",
     "WhatsappApi",
     "ChatGPT",
@@ -16,12 +16,12 @@
     "OpenAI",
     "chatbot",
     "whatsapppbot"
-   ],
+  ],
   "dependencies": {
-    "chatgpt": "^4.2.0",
     "dotenv": "^16.0.3",
     "express": "^4.18.0",
     "node-fetch": "^3.3.0",
+    "openai": "^4.72.0",
     "puppeteer": "^19.6.3",
     "puppeteer-core": "^19.6.3",
     "qrcode": "^1.5.0",
