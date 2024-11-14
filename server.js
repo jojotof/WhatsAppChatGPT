@@ -155,7 +155,6 @@ console.log('Client initialized and listening for messages');
           const botMessageId = (/jojo-?gpt/i.test(msg.body) || isReplyToBot)
             ? await msg.reply("[Jojo-GPT]: " + res.text)
             : await chat.sendMessage("[Jojo-GPT]: " + res.text);
-          await msg.markUnread();
 
           // Ajouter la réponse du bot à l'historique de la conversation
           botState[chatId].botMessageIds.push(botMessageId.id._serialized);
