@@ -47,7 +47,7 @@ console.log('Client initialized and listening for messages');
     apiKey: process.env.OPENAPI_KEY
   });
 
-  const promptInitial = "Tu es mon assistant de réponse à une conversation WhatsApp. Je m'appelle Christophe Joassin et on me surnomme Jojo. Tu réponds au nom de Jojo-GPT. Dans cette conversation, ce sont des amis proches. Le ton est familier. Il y a souvent des blagues. Je ne veux pas que tu réponde à tous les messages mais seulement lorsque tu pense qu'il y a quelque chose de pertinent à dire. Tu devrais répondre une fois tous les 5 à 10 messages sauf si le message m'est explicitement destiné. Les réponses doivent être courtes. Maximum 150 caractères. Si tu ne répond pas, la réponse doit être vide.";
+  const promptInitial = "Tu es mon assistant de réponse à une conversation WhatsApp. Je m'appelle Christophe Joassin et on me surnomme Jojo. Tu réponds au nom de Jojo-GPT. Dans cette conversation, ce sont des amis proches. Le ton est familier. Il y a souvent des blagues. Je ne veux pas que tu réponds à tous les messages mais seulement lorsque tu penses qu'il y a quelque chose de pertinent à dire. Tu devrais répondre une fois tous les 5 à 10 messages sauf si le message m'est explicitement destiné. Les réponses doivent être courtes. Maximum 150 caractères. Si tu ne réponds pas, la réponse doit être vide.";
 
   const conversationState = {};
 
@@ -60,8 +60,10 @@ function isEmojiOnly(message) {
     if (typeof msg.author === 'undefined') {
       return;
     }
-    const message = msg.author + (msg.fromMe ? '(me): ' : ': ') + msg.body;
-    console.log('MESSAGE RECEIVED', message);
+    const contact = await msg.getContact();
+    const contactName = contact.pushname || contact.name || msg.author;
+    const message = contactName + (msg.fromMe ? '(me): ' : ': ') + msg.body;
+    console.log('MESSAGE RECEIVED from', contactName, ':', message);
 
     const chat = await msg.getChat();
     const chatId = chat.id._serialized;
@@ -72,7 +74,7 @@ function isEmojiOnly(message) {
 
     // Vérifier si le message contient uniquement un ou plusieurs emojis
     if (isEmojiOnly(msg.body)) {
-      console.log('Message ignoré car il s\'agit uniquement d\'un smiley.');
+      console.log("Message ignoré car il s'agit uniquement d'un smiley.");
       return;
     }
 
@@ -82,17 +84,18 @@ function isEmojiOnly(message) {
     // Vérifier si le bot doit être mis en pause ou activé
     if (/jojo-?gpt off/i.test(msg.body)) {
       botActiveState[chatId] = false;
-      chat.sendMessage('Jojo-GPT désactivé pour ce chat.');
+      chat.sendMessage("[Jojo-GPT]: Je ne répondrai plus qu'aux messages qui me sont explicitement adressés.");
       return;
     }
 
     if (/jojo-?gpt on/i.test(msg.body)) {
       botActiveState[chatId] = true;
-      chat.sendMessage('Jojo-GPT activé pour ce chat.');
+      chat.sendMessage('[Jojo-GPT]: Super, je vais me mêler de tout !');
       return;
     }
 
-    if (botActiveState[chatId] === false) {
+    const isAddressedToGPT = /jojo-?gpt/i.test(msg.body);
+    if (botActiveState[chatId] === false && !isAddressedToGPT) {
       console.log('Bot is currently deactivated for this chat.');
       return;
     }
@@ -112,7 +115,6 @@ function isEmojiOnly(message) {
       if (res.text && res.text.trim() !== '') {
         console.log('RESPONSE:', res.text);
         if (process.env.DEBUGING !== 'true') {
-          const isAddressedToGPT = /jojo-?gpt/i.test(msg.body);
           if (isAddressedToGPT) {
             msg.reply("[Jojo-GPT]: " + res.text);
           }
