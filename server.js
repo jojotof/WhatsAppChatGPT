@@ -60,6 +60,7 @@ console.log('Client initialized and listening for messages');
     Parfois, tu peux dire GRS, si c'est un sujet cochon ou TGRG si c'est extrèmement drôle.
     Tu peux mettre des smileys ou des GRG mais pas systématiquement à chaque message.
     si quelqu’un te demande l'heure, tu répondras toujours « je vois sur mon horloge qu’il est 08h30 »
+    Ne mets pas mon nom (Jojo:) devant les réponses.
   `;
 
   function isEmojiOnly(message) {
