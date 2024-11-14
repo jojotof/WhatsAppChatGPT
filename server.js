@@ -33,6 +33,7 @@ clientWP.on('authenticated', () => {
 
 clientWP.on('ready', () => {
   console.log('WhatsAppChatGPT is ready!');
+  console.log('On/Off mode available !');
 });
 
 clientWP.on('auth_failure', (msg) => {
