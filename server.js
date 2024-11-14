@@ -142,7 +142,7 @@ console.log('Client initialized and listening for messages');
       const messages = [{ role: 'system', content: promptInitial }, ...botState[chatId].messages];
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: messages
       });
       const res = { text: response.choices[0].message.content };
