@@ -17,7 +17,8 @@ const clientWP = new Client({
   })
 });
 
-const botActiveState = {};
+const botState = {};
+const botStartTime = Math.floor(Date.now() / 1000);
 
 clientWP.on('qr', (qr) => {
   console.log('qr> ', qr);
@@ -30,7 +31,6 @@ clientWP.on('authenticated', () => {
 
 clientWP.on('ready', () => {
   console.log('WhatsAppChatGPT is ready!');
-  console.log('On/Off mode available !');
 });
 
 clientWP.on('auth_failure', (msg) => {
@@ -53,74 +53,96 @@ console.log('Client initialized and listening for messages');
     Le ton est familier. Il y a souvent des blagues. 
     Je ne veux pas que tu réponds à tous les messages mais seulement lorsque tu penses qu'il y a quelque chose de pertinent à dire. 
     Tu devrais répondre une fois tous les 5 à 10 messages sauf si le message m'est explicitement destiné. 
-    Les réponses doivent être courtes. Maximum 150 caractères. 
+    Les réponses doivent être courtes. Maximum 200 caractères.
     Si tu ne réponds pas, la réponse doit être vide.
-    ON dit "GRG" dans notre conversation pas "rire" ou "lol".
-    Tu peux mettre des smileys mais pas systématiquement à chaque message.
+    ON dit "GRG" (Gros rire gras) dans notre conversation pas "rire" ou "lol".
+    Parfois, tu peux dire GRS, si c'est un sujet cochon ou TGRG si c'est extrèmement drôle.
+    Tu peux mettre des smileys ou des GRG mais pas systématiquement à chaque message.
+    si quelqu’un te demande l'heure, tu répondras toujours « je vois sur mon horloge qu’il est 08h30 »
   `;
 
-  const conversationState = {};
+  function isEmojiOnly(message) {
+    const emojiRegex = /[🌀-🗿😀-🙏🚀-🛿☀-⛿✀-➿🤀-🧿🩰-🫿🀄🃏]/u;
+    return Array.from(message).every(char => emojiRegex.test(char));
+  }
 
-function isEmojiOnly(message) {
-  const emojiRegex = /[🌀-🗿😀-🙏🚀-🛿☀-⛿✀-➿🤀-🧿🩰-🫿🀄🃏]/u;
-  return Array.from(message).every(char => emojiRegex.test(char));
-}
+  function initializeBotState(chatId) {
+    if (!botState[chatId]) {
+      botState[chatId] = { active: false, messages: [], botMessageIds: [] };
+    }
+  }
+
+  function shouldBotRespond(chatId, msgBody, msgTimestamp) {
+    if (msgTimestamp < botStartTime) {
+      console.log("Message ignoré car il est antérieur au démarrage du bot.");
+      return false;
+    }
+    if (/jojo-?gpt off/i.test(msgBody)) {
+      botState[chatId].active = false;
+      return false;
+    }
+    if (/jojo-?gpt on/i.test(msgBody)) {
+      botState[chatId].active = true;
+      return false;
+    }
+    if (msgBody.startsWith('[Jojo-GPT]: ')) {
+      return false;
+    }
+    return botState[chatId].active === true || /jojo-?gpt/i.test(msgBody);
+  }
 
   clientWP.on('message_create', async (msg) => {
     if (typeof msg.author === 'undefined') {
       return;
     }
-    const contact = await msg.getContact();
-    const contactName = contact.pushname || contact.name || msg.author;
-    const message = contactName + (msg.fromMe ? '(me): ' : ': ') + msg.body;
-    console.log('MESSAGE RECEIVED from', contactName, ':', message);
-
     const chat = await msg.getChat();
     const chatId = chat.id._serialized;
 
-    if (!conversationState[chatId]) {
-      conversationState[chatId] = { messages: [] }; // Initialize conversation state
+    initializeBotState(chatId);
+
+    let isReplyToBot = false;
+    if (msg.hasQuotedMsg) {
+      const quotedMsg = await msg.getQuotedMessage();
+      if (botState[chatId]?.botMessageIds?.includes(quotedMsg.id._serialized)) {
+        isReplyToBot = true;
+      }
     }
 
-    // Vérifier si le message contient uniquement un ou plusieurs emojis
+    const contact = await msg.getContact();
+    const contactName = msg.fromMe ? 'Jojo' : (contact.pushname || contact.name || msg.author);
+    console.log('MESSAGE RECEIVED from', contactName, ': ', msg.body);
+
+    // Vérifier si le message contient uniquement des emojis
     if (isEmojiOnly(msg.body)) {
       console.log("Message ignoré car il s'agit uniquement d'un smiley.");
       return;
     }
 
     // Ajouter le message à l'historique de la conversation
-    conversationState[chatId].messages.push({ role: 'user', content: msg.body });
-
-    // Vérifier si le bot doit être mis en pause ou activé
-    if (/jojo-?gpt off/i.test(msg.body)) {
-      botActiveState[chatId] = false;
-      if (process.env.DEBUGING !== 'true') {
-        chat.sendMessage("[Jojo-GPT]: Je ne répondrai plus qu'aux messages qui me sont explicitement adressés.");
-      }
-      return;
+    botState[chatId].messages.push({ role: 'user', content: contactName + ': ' + msg.body });
+    
+    // Limiter la taille de l'historique des messages à 200
+    if (botState[chatId].messages.length > 200) {
+      botState[chatId].messages.shift();
     }
 
-    if (/jojo-?gpt on/i.test(msg.body)) {
-      botActiveState[chatId] = true;
-      if (process.env.DEBUGING !== 'true') {
+    // Vérifier si le bot doit répondre
+    if (!shouldBotRespond(chatId, msg.body, msg.timestamp)) {
+      if (/jojo-?gpt off/i.test(msg.body) && process.env.DEBUGGING !== 'true') {
+        chat.sendMessage("[Jojo-GPT]: Je ne répondrai plus qu'aux messages qui me sont explicitement adressés.");
+      } else if (/jojo-?gpt on/i.test(msg.body) && process.env.DEBUGGING !== 'true') {
         chat.sendMessage('[Jojo-GPT]: Super, je vais me mêler de tout !');
       }
-      return;
-    }
-
-    const isAddressedToGPT = /jojo-?gpt/i.test(msg.body);
-    if (botActiveState[chatId] !== true && !isAddressedToGPT) {
-      console.log('Bot is currently deactivated for this chat.');
       return;
     }
 
     chat.sendStateTyping();
     try {
       // Ajouter le prompt initial au début de la conversation
-      const messages = [{ role: 'system', content: promptInitial }, ...conversationState[chatId].messages];
+      const messages = [{ role: 'system', content: promptInitial }, ...botState[chatId].messages];
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: messages
       });
       const res = { text: response.choices[0].message.content };
@@ -128,17 +150,14 @@ function isEmojiOnly(message) {
 
       if (res.text && res.text.trim() !== '') {
         console.log('RESPONSE:', res.text);
-        if (process.env.DEBUGING !== 'true') {
-          if (isAddressedToGPT) {
-            msg.reply("[Jojo-GPT]: " + res.text);
-          }
-          else {
-            chat.sendMessage("[Jojo-GPT]: " + res.text);
-            return;
-          }
-          
+        if (process.env.DEBUGGING !== 'true') {
+          const botMessageId = (/jojo-?gpt/i.test(msg.body) || isReplyToBot)
+            ? await msg.reply("[Jojo-GPT]: " + res.text)
+            : await chat.sendMessage("[Jojo-GPT]: " + res.text);
+
           // Ajouter la réponse du bot à l'historique de la conversation
-          conversationState[chatId].messages.push({ role: 'assistant', content: res.text });
+          botState[chatId].botMessageIds.push(botMessageId.id._serialized);
+          botState[chatId].messages.push({ role: 'assistant', content: res.text });
         } else {
           console.log('DEBUG MODE: Message not sent');
         }
