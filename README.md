@@ -18,7 +18,8 @@ I had create this example on Ubuntu 20.04 with Node v16.19.0.
 
 ```
 OPENAPI_KEY=OPENAPI_KEY
-PORT=5000
+DEBUGING=false
+ALLOWED_GROUP_IDS=1D1,1D2
 ```
 
 ## Installation
@@ -31,16 +32,3 @@ PORT=5000
 6. Scan the QR Code with Whatsapp (Link a device)
 7. Wait, For WhatGPT message. `WhatsAppChatGPT is ready!`
 8. Now we are ready to use WhatsAppChatGPT to your scanned number.
-
-## Usage
-
-To use the bot, simply send a message with `!chatgpt` command followed by your prompt. For example:
-
-`!chatgpt send me some idea about valentine day.`
-
-WhatsAppChatGPT only responds to messages that are received by you, not sent.
-Need to discuss? [Let's connect on Telegram](https://t.me/idoctype)
-
-## Used libraries
-- [node-chatgpt-api](https://github.com/waylaidwanderer/node-chatgpt-api)
-- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js)

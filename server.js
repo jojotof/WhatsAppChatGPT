@@ -17,6 +17,11 @@ const clientWP = new Client({
   })
 });
 
+const botActiveState = process.env.ALLOWED_GROUP_IDS.split(',').reduce((acc, id) => {
+  acc[id.trim()] = true;
+  return acc;
+}, {});
+
 clientWP.on('qr', (qr) => {
   console.log('qr> ', qr);
   qrcode.generate(qr, { small: true });
@@ -46,6 +51,11 @@ console.log('Client initialized and listening for messages');
 
   const conversationState = {};
 
+function isEmojiOnly(message) {
+  const emojiRegex = /[🌀-🗿😀-🙏🚀-🛿☀-⛿✀-➿🤀-🧿🩰-🫿🀄🃏]/u;
+  return Array.from(message).every(char => emojiRegex.test(char));
+}
+
   clientWP.on('message_create', async (msg) => {
     if (typeof msg.author === 'undefined') {
       return;
@@ -56,21 +66,36 @@ console.log('Client initialized and listening for messages');
     const chat = await msg.getChat();
     const chatId = chat.id._serialized;
 
-    // Limiter les réponses uniquement au groupe autorisé
-    const allowedGroupIds = process.env.ALLOWED_GROUP_IDS.split(',').map(id => id.trim());
-    if (!allowedGroupIds.includes(chatId)) {
-      console.log(`Message reçu d'un groupe non autorisé: Chat ID: ${chatId}, Name: ${chat.name}`);
-      if (process.env.DEBUGING !== 'true') {
-        return;
-      }
-    }
-
     if (!conversationState[chatId]) {
       conversationState[chatId] = { messages: [] }; // Initialize conversation state
     }
 
+    // Vérifier si le message contient uniquement un ou plusieurs emojis
+    if (isEmojiOnly(msg.body)) {
+      console.log('Message ignoré car il s\'agit uniquement d\'un smiley.');
+      return;
+    }
+
     // Ajouter le message à l'historique de la conversation
     conversationState[chatId].messages.push({ role: 'user', content: msg.body });
+
+    // Vérifier si le bot doit être mis en pause ou activé
+    if (/jojo-?gpt off/i.test(msg.body)) {
+      botActiveState[chatId] = false;
+      chat.sendMessage('Jojo-GPT désactivé pour ce chat.');
+      return;
+    }
+
+    if (/jojo-?gpt on/i.test(msg.body)) {
+      botActiveState[chatId] = true;
+      chat.sendMessage('Jojo-GPT activé pour ce chat.');
+      return;
+    }
+
+    if (botActiveState[chatId] === false) {
+      console.log('Bot is currently deactivated for this chat.');
+      return;
+    }
 
     chat.sendStateTyping();
     try {
@@ -87,7 +112,7 @@ console.log('Client initialized and listening for messages');
       if (res.text && res.text.trim() !== '') {
         console.log('RESPONSE:', res.text);
         if (process.env.DEBUGING !== 'true') {
-          const isAddressedToGPT = msg.body.toLowerCase().includes('jojo-gpt');
+          const isAddressedToGPT = /jojo-?gpt/i.test(msg.body);
           if (isAddressedToGPT) {
             msg.reply("[Jojo-GPT]: " + res.text);
           }
