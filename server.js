@@ -7,6 +7,7 @@ import { Client } from 'whatsapp-web.js';
 import { LocalAuth, qrcode } from './shell.cjs';
 
 const clientWP = new Client({
+  sendSeen: false,
   puppeteer: {
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--unhandled-rejections=strict']
@@ -52,7 +53,7 @@ console.log('Client initialized and listening for messages');
     Dans cette conversation, ce sont des amis proches. 
     Le ton est familier. Il y a souvent des blagues. 
     Je ne veux pas que tu réponds à tous les messages mais seulement lorsque tu penses qu'il y a quelque chose de pertinent à dire. 
-    Tu devrais répondre une fois tous les 5 à 10 messages sauf si le message m'est explicitement destiné. 
+    Tu devrais répondre une fois tous les 5 à 10 messages sauf si le message nous est explicitement destiné.
     Les réponses doivent être courtes. Maximum 200 caractères.
     Si tu ne réponds pas, la réponse doit être vide.
     ON dit "GRG" (Gros rire gras) dans notre conversation pas "rire" ou "lol".
@@ -142,7 +143,7 @@ console.log('Client initialized and listening for messages');
       const messages = [{ role: 'system', content: promptInitial }, ...botState[chatId].messages];
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: messages
       });
       const res = { text: response.choices[0].message.content };
@@ -154,6 +155,7 @@ console.log('Client initialized and listening for messages');
           const botMessageId = (/jojo-?gpt/i.test(msg.body) || isReplyToBot)
             ? await msg.reply("[Jojo-GPT]: " + res.text)
             : await chat.sendMessage("[Jojo-GPT]: " + res.text);
+          await msg.markUnread();
 
           // Ajouter la réponse du bot à l'historique de la conversation
           botState[chatId].botMessageIds.push(botMessageId.id._serialized);
